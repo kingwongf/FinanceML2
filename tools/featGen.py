@@ -57,9 +57,9 @@ def stochRSI_D(close, period=14):
     D = K.rolling(3).mean()
     return D
 
-def MACD(close):
-    shortEma = close.ewm(adjust=True, alpha=0.15).mean()
-    longEma = close.ewm(adjust=True, alpha=0.075).mean()
+def MACD(close, n=(20,250)):
+    shortEma = close.ewm(span=n[0], min_periods=n[1]).mean()
+    longEma = close.ewm(span=n[1], min_periods=n[1]).mean()
     macd = shortEma - longEma
     return macd
 
@@ -70,11 +70,14 @@ def momentum(close, n=1):
     # print(len(close))
     # print("close", close.index)
     prev_close = close.shift(n, axis=0)
-    # print(prev_close.columns)
+    # print(prev_close)
     mom = close/prev_close -1
     # print("mom", mom.index)
     # print(mom)
     return mom
+
+def chmom(close,n=1):
+    return momentum(close, n).diff(1)
 
 def retvol(close, period=1):
     # def retvol(close, period='1d'):
@@ -89,8 +92,15 @@ def maxret(close, period=1):
     return max_ret
 
 def ret(close, n=1):
-    ret_ = np.log(close).diff(-n).shift(n)
+    ret_ = np.log(close).diff(n)
     return ret_
+
+def emaret(close, n=1):
+    return ret(close, n=1).rolling(n)
+
+def fwdret(close, n=1):
+    return ret(close, n=1).rolling(n).shift(-n)
+
 def side(close, n=1):
     ret_ = ret(close, n=n)
     side_ = np.sign(ret_)
