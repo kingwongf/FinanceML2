@@ -11,7 +11,7 @@ import statsmodels.api as sm
 import matplotlib.pyplot as plt
 import zipfile
 import time
-
+from de.feat_gen.technicalsGen import featTAGen
 
 from tools import featGen
 from tools import labelling_Marcos
@@ -33,12 +33,12 @@ class preFX(object):
 		else:
 			self.pickle_loc = "/intra_" + self.sample_freq + ".pkl"
 
-	def gen_daily(self):
+	def gen(self):
 		for root, _, files in os.walk(self.tick_loc):
 			print(root)
 			dfs = []
 			if '.DS_Store' in files: files.remove('.DS_Store')
-			if 'daily_fx.pkl' in files: continue
+			if self.pickle_loc[1:] in files: continue
 			if len(files) != 0:
 				for file in files:
 					ticker = file[:6]
@@ -48,12 +48,14 @@ class preFX(object):
 						csv_path = root + "/" + file[:-4] + ".csv"
 						df = pd.read_csv(csv_path, header=None,
 						                 names=['ticker', 'date', ticker + '_bid', ticker + '_ask'], low_memory=False)
+						df['mid_price'] = (df[ticker + '_bid'] + df[ticker + '_ask'])/2
 						os.remove(csv_path)
 						df.index = pd.to_datetime(df.date)
-						df = df.drop(['ticker', 'date'], axis=1)
-						dfs.append(self.sample_freq)
+						df = df.drop(['ticker', 'date', ticker + '_bid', ticker + '_ask'], axis=1)
+						dfs.append(df)
 				# print(len(dfs))
-				dfs_ = reduce(lambda X, x: pd.merge_asof(X[pd.notna(X.index)].sort_index(), x[pd.notna(x.index)].sort_index(),
+
+				dfs_ = reduce(lambda X, x: pd.merge_asof(X[X.index.notna()].sort_index(), x[x.index.notna()].sort_index(),
 				                                         left_index=True, right_index=True, direction='forward',
 				                                         tolerance=pd.Timedelta('2ms')), dfs)
 				dfs_ = dfs_.resample(self.sample_freq).first()
@@ -89,9 +91,14 @@ tick_loc = "data/fx/tick"
 daily_loc = "data/fx/daily"
 
 t = time.process_time()
-tick_source = preFX(tickers, tick_loc, daily_loc, 'D')
-# tick_source.gen_daily()
-tick_source.merge()
+tick_source = preFX(tickers, tick_loc, daily_loc, 'min')
+tick_source.gen()
+# tick_source.merge()
+
+ta = featTAGen("data/fx/daily/all_fx_daily.pkl", '1m')
+df = ta.ta_gen()
+df.to_pickle('pre_data/feat_fx_daily.pkl')
+
 
 # fx_loc = "data/fx/tick"
 # today = date.today()

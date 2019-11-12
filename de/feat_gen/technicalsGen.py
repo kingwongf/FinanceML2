@@ -10,12 +10,12 @@ pd.set_option("display.max_columns", 500)
 
 
 class featTAGen(object):
-    def __init__(self, daily_price_loc, bid_ask_ind, ret_freq):
-        self.df = pd.read_pickle(daily_price_loc)
+    def __init__(self, price_loc, ret_freq):
+        if type(price_loc)==str: self.df = pd.read_pickle(price_loc)
+        else: self.df = price_loc
 
         # .rename_axis(index='Date', columns="ticker")
 
-        self.bid_ask_ind = bid_ask_ind
         self.ticker_names = self.df.columns.tolist()
         self.ret_freq = ret_freq
         self.feat_dict = {'mom': featGen.momentum,
@@ -170,11 +170,6 @@ class featTAGen(object):
 '''
 
 
-ta = featTAGen("data/fx/daily/all_fx_daily.pkl", True, '1m')
-df = ta.ta_gen()
-df.to_pickle('pre_data/feat_fx_daily.pkl')
-
-print(df)
 
 # ta.ta_gen()
 
