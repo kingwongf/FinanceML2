@@ -1,0 +1,62 @@
+!!python/object:pandas.core.frame.DataFrame
+_data: !!python/object/new:pandas.core.internals.managers.BlockManager
+  state: !!python/tuple
+  - &id002
+    - !!python/object/apply:pandas.core.indexes.base._new_Index
+      - &id001 !!python/name:pandas.core.indexes.range.RangeIndex ''
+      - name: null
+        start: 0
+        step: 1
+        stop: 1
+    - !!python/object/apply:pandas.core.indexes.base._new_Index
+      - *id001
+      - name: null
+        start: 0
+        step: 1
+        stop: 3
+  - - &id003 !!python/object/apply:numpy.core.multiarray._reconstruct
+      args:
+      - !!python/name:numpy.ndarray ''
+      - !!python/tuple
+        - 0
+      - !!binary |
+        Yg==
+      state: !!python/tuple
+      - 1
+      - !!python/tuple
+        - 1
+        - 3
+      - !!python/object/apply:numpy.dtype
+        args:
+        - O8
+        - 0
+        - 1
+        state: !!python/tuple
+        - 3
+        - '|'
+        - null
+        - null
+        - null
+        - -1
+        - -1
+        - 63
+      - false
+      - - !!python/name:tools.featGen.momentum ''
+        - 1
+        - mom1
+  - - !!python/object/apply:pandas.core.indexes.base._new_Index
+      - *id001
+      - name: null
+        start: 0
+        step: 1
+        stop: 1
+  - 0.14.1:
+      axes: *id002
+      blocks:
+      - mgr_locs: !!python/object/apply:builtins.slice
+        - 0
+        - 1
+        - 1
+        values: *id003
+_metadata: []
+_typ: dataframe

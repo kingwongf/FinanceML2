@@ -1,0 +1,4 @@
+feat:
+  mom1d:
+    - featGen.momentum
+    - 1

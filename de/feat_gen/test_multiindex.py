@@ -47,20 +47,8 @@ freq_dict = {'1d': 1,
                   '6m': 125,
                   '12m': 250
                   }
-feat_dict = {'mom': featGen.momentum,
-             'retvol': featGen.retvol,
-             'ema': featGen.ema,
-             'RSI': featGen.RSI,
-             'MACD': featGen.MACD,
-             'maxret': featGen.maxret
-             }
 
-RSI = us_eod_Adj_Close.apply(featGen.RSI, axis=0).fillna(method='ffill').unstack().reset_index(name='RSI')
-MACD1m12m = us_eod_Adj_Close.apply(featGen.MACD, axis=0).fillna(method='ffill').unstack().reset_index(name='MACD1m12m')
 
-return1m = us_eod_Adj_Close.pct_change(20).unstack().reset_index(name='return1m')
-emaret1m = us_eod_Adj_Close.pct_change(20).rolling(20).mean().unstack().reset_index(name='emaret1m')
-fwd_return1m = us_eod_Adj_Close.pct_change(20).shift(-20).unstack().reset_index(name='fwd_return1m')
 
 
 feat_li = [(featGen.momentum, "mom1d", freq_dict['1d']),
@@ -78,7 +66,9 @@ feat_li = [(featGen.momentum, "mom1d", freq_dict['1d']),
            (featGen.chmom , "chmom1m", freq_dict['1m']),
            (featGen.chmom, "chmom6m", freq_dict['6m']),
            (featGen.chmom, "chmom12m", freq_dict['12m']),
-           ]
+           (featGen.ret, "ret", freq_dict['1m']),
+           (featGen.emaret, "emaret", freq_dict['1m']),
+           (featGen.fwdret, "fwdret",freq_dict['1m'])   ]
 
 def feat_apply(df, **kwargs):
       df = df.join(df[['price']].swifter.apply(item[0], axis=0, args=(item[1],)).fillna(method='ffill').rename(

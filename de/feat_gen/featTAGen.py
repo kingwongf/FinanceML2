@@ -11,7 +11,10 @@ pd.set_option("display.max_columns", 500)
 
 class featTAGen(object):
     def __init__(self, daily_price_loc, bid_ask_ind, ret_freq):
-        self.df = pd.read_pickle(daily_price_loc).rename_axis(index='Date', columns="ticker")
+        self.df = pd.read_pickle(daily_price_loc)
+
+        # .rename_axis(index='Date', columns="ticker")
+
         self.bid_ask_ind = bid_ask_ind
         self.ticker_names = self.df.columns.tolist()
         self.ret_freq = ret_freq
@@ -28,12 +31,43 @@ class featTAGen(object):
                      '6m': 125,
                      '12m': 250
                      }
+        self.feat_li = [(featGen.momentum, self.freq_dict['1d'], "mom1d"),
+           (featGen.momentum, self.freq_dict['1w'], "mom1w"),
+           (featGen.momentum, self.freq_dict['1m'], "mom1m"),
+           (featGen.momentum, self.freq_dict['6m'], "mom6m"),
+           (featGen.momentum, self.freq_dict['12m'], "mom12m"),
+           (featGen.retvol, self.freq_dict['1m'], "retvol1m"),
+           (featGen.retvol, self.freq_dict['12m'], "retvol12m"),
+           (featGen.maxret, self.freq_dict['1m'], "maxret1m"),
+           (featGen.maxret, self.freq_dict['12m'], "maxret12m"),
+           (featGen.ema, self.freq_dict['1m'], "ema1m"),
+           (featGen.RSI, 14, "RSI"),
+           (featGen.MACD, (20, 250), "MACD"),
+           (featGen.chmom , self.freq_dict['1m'], "chmom1m"),
+           (featGen.chmom, self.freq_dict['6m'], "chmom6m"),
+           (featGen.chmom, self.freq_dict['12m'], "chmom12m"),
+           (featGen.ret, self.freq_dict['1m'], "ret"),
+           (featGen.emaret, self.freq_dict['1m'], "emaret"),
+           (featGen.fwdret,self.freq_dict['1m'], "fwdret")]
 
     def df_ta(self, df, feat, freq):
         return df.swifter.apply(self.feat_dict[feat], axis=0, args=(self.freq_dict[freq],)).fillna(
             method='ffill').unstack().reset_index(name=feat + freq)
 
     def ta_gen(self):
+        df1 = self.df.copy()
+
+        # print(df1[['price']].apply(featGen.momentum, axis=0, args=(1,)).fillna(method='ffill').rename(
+        #                columns={"price": item[2]}))
+        for item in self.feat_li:
+            print(item)
+            df1 = df1.join(
+                    df1[['price']].swifter.apply(item[0], axis=0, args=(item[1],)).fillna(method='ffill').rename(
+                        columns={"price": item[2]}))
+        df1.unstack('feat').unstack('feat')
+        return df1
+
+'''        
         ret_freq = self.freq_dict[self.ret_freq]
         name_dfs = ['close','mom1d', 'mom1w', 'mom1m', 'chmom1m', 'mom6m', 'chmom6m', 'mom12m',
                     'chmom12m', 'retvol1m', 'retvol12m', 'maxret1m',
@@ -133,10 +167,14 @@ class featTAGen(object):
 
         print(unstack_df[['ticker', 'ema1m', 'retvol1m', 'fwd_return1m', 'side']])
         unstack_df.to_csv('data/unstack_us_eod_with_feat.csv')
+'''
 
 
-ta = featTAGen("data/fx/tick/2009-05/daily_fx.pkl", True)
-print(ta.df.head(5))
+ta = featTAGen("data/fx/daily/all_fx_daily.pkl", True, '1m')
+df = ta.ta_gen()
+df.to_pickle('pre_data/feat_fx_daily.pkl')
+
+print(df)
 
 # ta.ta_gen()
 

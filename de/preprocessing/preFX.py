@@ -22,11 +22,17 @@ pd.set_option('display.max_colwidth', -1)  # or 199
 
 ''' merge dataframes of different dates to have one large dataframe '''
 
-class preFXDaily(object):
-	def __init__(self, tickers, tick_loc, daily_loc):
+class preFX(object):
+	def __init__(self, tickers, tick_loc, all_loc, sample_freq='D'):
 		self.tickers = tickers
 		self.tick_loc = tick_loc
-		self.daily_loc = daily_loc
+		self.all_loc = all_loc
+		self.sample_freq = sample_freq
+		if self.sample_freq == 'D':
+			self.pickle_loc = "/daily_fx.pkl"
+		else:
+			self.pickle_loc = "/intra_" + self.sample_freq + ".pkl"
+
 	def gen_daily(self):
 		for root, _, files in os.walk(self.tick_loc):
 			print(root)
@@ -45,28 +51,31 @@ class preFXDaily(object):
 						os.remove(csv_path)
 						df.index = pd.to_datetime(df.date)
 						df = df.drop(['ticker', 'date'], axis=1)
-						dfs.append(df)
+						dfs.append(self.sample_freq)
 				# print(len(dfs))
 				dfs_ = reduce(lambda X, x: pd.merge_asof(X[pd.notna(X.index)].sort_index(), x[pd.notna(x.index)].sort_index(),
 				                                         left_index=True, right_index=True, direction='forward',
 				                                         tolerance=pd.Timedelta('2ms')), dfs)
-				dfs_ = dfs_.resample('D').first()
+				dfs_ = dfs_.resample(self.sample_freq).first()
 				# print(dfs_.columns)
-				dfs_.to_pickle(root + "/daily_fx.pkl")
+				dfs_.to_pickle(root + self.pickle_loc)
 
-	def merge_daily(self):
+	def merge(self):
 		dfs = []
 		for root, _, files in os.walk(self.tick_loc):
 			if '.DS_Store' in files: files.remove('.DS_Store')
 			if len(files) != 0:
 				for file in files:
 					if file == "daily_fx.pkl":
-						df = pd.read_pickle(root + "/daily_fx.pkl")
-						df.index = df.date
+						df = pd.read_pickle(root + self.pickle_loc)
+						df.columns = pd.MultiIndex.from_product([['price'], df.columns.tolist()], names=['feat', 'ticker'])
 						dfs.append(df)
 		dfs_ = reduce(lambda X, x: X.sort_index().append(x.sort_index()), dfs)
-		dfs_ = dfs_.loc[~dfs_.index.duplicated(keep='first')].sort_index().interpolate()
-		dfs_.to_pickle(self.daily_loc + "/daily.pkl")
+		dfs_ = dfs_.loc[~dfs_.index.duplicated(keep='first')].sort_index().dropna(axis=0).astype('float64')
+		if self.all_loc == "data/fx/daily":
+			dfs_.to_pickle(self.all_loc + "/all_fx_daily.pkl")
+		else:
+			dfs_.to_pickle(self.all_loc + "/all_fx_intra_%s.pkl" % self.sample_freq)
 
 
 
@@ -80,9 +89,9 @@ tick_loc = "data/fx/tick"
 daily_loc = "data/fx/daily"
 
 t = time.process_time()
-tick_source = preFXDaily(tickers, tick_loc, daily_loc)
-tick_source.gen_daily()
-# tick_source.merge_daily()
+tick_source = preFX(tickers, tick_loc, daily_loc, 'D')
+# tick_source.gen_daily()
+tick_source.merge()
 
 # fx_loc = "data/fx/tick"
 # today = date.today()

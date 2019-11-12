@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.stats.mstats import zscore, winsorize
 
 
 #print(pd.__version__)
@@ -29,7 +30,6 @@ def RSI(close, period=14):
     rollDown = dDown.abs().ewm(span=period).mean()
     rsi = rollUp/ rollDown
     RSI = 100.0 - (100.0 / (1.0 + rsi))
-    RSI = RSI.rename('RSI ' + close.name, inplace=True)
 #    print(RSI.name)
     return RSI
 
@@ -58,8 +58,9 @@ def stochRSI_D(close, period=14):
     return D
 
 def MACD(close, n=(20,250)):
-    shortEma = close.ewm(span=n[0], min_periods=n[1]).mean()
-    longEma = close.ewm(span=n[1], min_periods=n[1]).mean()
+    short_n, long_n = n
+    shortEma = close.ewm(span=short_n, min_periods=n[1]).mean()
+    longEma = close.ewm(span=long_n, min_periods=n[1]).mean()
     macd = shortEma - longEma
     return macd
 
@@ -96,15 +97,24 @@ def ret(close, n=1):
     return ret_
 
 def emaret(close, n=1):
-    return ret(close, n=1).rolling(n)
+    return ret(close, n=1).rolling(n).mean()
 
 def fwdret(close, n=1):
-    return ret(close, n=1).rolling(n).shift(-n)
+    return ret(close, n=1).shift(-n)
 
 def side(close, n=1):
     ret_ = ret(close, n=n)
     side_ = np.sign(ret_)
     return side_
+
+
+def get_norm_side(ret, stats=(0,0,1.645)):
+    mean, vol, z = stats
+    side = winsorize(ret, limits=[0.025, 0.025])
+    side[(ret - mean) / np.sqrt(vol) > z] = 1
+    side[(ret - mean) / np.sqrt(vol) < -z] = -1
+    side[((ret - mean) / np.sqrt(vol) >= -z) & ((ret - mean) / np.sqrt(vol) <= z)] = 0
+    return side
 #K, D = stochRSI(price['4. close'])
 
 #print(MACD(price['4. close']))
