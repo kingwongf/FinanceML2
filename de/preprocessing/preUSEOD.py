@@ -1,8 +1,12 @@
 import pandas as pd
+import os
+print(os.getcwd())
+os.chdir("/Users/kingf.wong/Development/FinanceML2")
 import numpy as np
 from tools import featGen
 from scipy.stats.mstats import zscore, winsorize
 import swifter
+import yaml
 from de.feat_gen.technicalsGen import featTAGen
 pd.set_option("display.max_rows", 10000)
 pd.set_option("display.max_columns", 500)
@@ -10,25 +14,32 @@ pd.set_option("display.max_columns", 500)
 
 
 class preUSEOD(object):
-	def __init__(self, us_eod_loc, adj_close_loc, date_range):
+	def __init__(self, us_eod_loc, adj_close_loc, ticker_li_loc):
 		self.us_eod_loc = us_eod_loc
 		self.adj_close_loc = adj_close_loc
-		self.date_range = date_range
+		self.ticker_li_loc = ticker_li_loc
 
 	def pivot(self, values):
 		us_eod = pd.read_pickle(self.us_eod_loc)
+		us_eod = us_eod[us_eod['ticker'].isin(pd.read_csv(self.ticker_li_loc)['ticker'].tolist())]
 		us_eod.index = pd.to_datetime(us_eod.Date)
 		us_eod = us_eod.sort_index()
 		us_eod = us_eod[[values, 'ticker']]
 		us_eod = pd.pivot_table(us_eod, values=values, index=[us_eod.index],
 		                                  columns=['ticker']).sort_index().fillna(method='ffill')
+		# us_eod = us_eod[us_eod.columns[0:460]]
 		us_eod.columns = pd.MultiIndex.from_product([['price'], us_eod.columns.tolist()], names=['feat', 'ticker'])
-		return us_eod[self.date_range]
+		return us_eod
+	@staticmethod
+	def flatten(df):
+		return df.reset_index(level=0)
 
-pre = preUSEOD('data/US_EOD_20191019.pkl', 'data/equities/preprocessed/us_eod_adj_close.pkl', 'Adj_Close')
-pre_useod = pre.pivot()
-ta = featTAGen(preUSEOD, '1m')
+
+pre = preUSEOD('data/equities/US_EOD_20191019.pkl', 'data/equities/preprocessed/us_eod_adj_close.pkl', 'data/equities/revolut_tickers.csv')
+df_pre_useod = pre.pivot('Adj_Close').fillna(method='ffill')
+ta = featTAGen(df_pre_useod, '1m')
 df = ta.ta_gen()
+df = pre.flatten(df).dropna(axis=0)['2009-01-01':]   ## debugging ['2018-01-01':'2018-01-20']
 df.to_pickle('pre_data/feat_useod_daily.pkl')
 
 

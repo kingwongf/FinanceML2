@@ -50,10 +50,6 @@ class featTAGen(object):
            (featGen.emaret, self.freq_dict['1m'], "emaret"),
            (featGen.fwdret,self.freq_dict['1m'], "fwdret")]
 
-    def df_ta(self, df, feat, freq):
-        return df.swifter.apply(self.feat_dict[feat], axis=0, args=(self.freq_dict[freq],)).fillna(
-            method='ffill').unstack().reset_index(name=feat + freq)
-
     def ta_gen(self):
         df1 = self.df.copy()
 
@@ -64,8 +60,7 @@ class featTAGen(object):
             df1 = df1.join(
                     df1[['price']].swifter.apply(item[0], axis=0, args=(item[1],)).fillna(method='ffill').rename(
                         columns={"price": item[2]}))
-        df1.unstack('feat').unstack('feat')
-        return df1
+        return df1.unstack('feat').unstack('feat')
 
 '''        
         ret_freq = self.freq_dict[self.ret_freq]

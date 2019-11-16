@@ -1,0 +1,24 @@
+equities:
+  raw:
+    us: data/equities/US_EOD_20191019.pkl
+    china: data/equities/China_EOD_20191019.pkl
+  feat:
+    us: pre_data/feat_useod_daily.pkl
+
+fx:
+  raw:
+    tick: data/fx/tick/
+    daily: data/fx/daily/all_fx_daily.pkl
+    intra: data/fx/intra/
+  feat:
+    daily: pre_data/feat_fx_daily.pkl
+    intra: pre_data/intra/
+
+futures:
+  raw:
+    china: data/futures/China_Futures_DY_FUA_csv
+  feat:
+    daily: pre_data/feat_china_futures_daily.pkl
+
+
+
