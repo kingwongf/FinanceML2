@@ -9,7 +9,11 @@ from tensorflow.keras import layers
 from tensorflow.keras import regularizers
 from tensorflow.keras.utils import to_categorical
 from tools.featGen import get_norm_side
-
+from sklearn.metrics import classification_report
+from sklearn.utils.class_weight import compute_class_weight
+from imblearn.keras import balanced_batch_generator
+from imblearn.under_sampling import NearMiss
+from itertools import product
 
 
 pd.set_option('display.max_columns', None)  # or 1000
@@ -52,6 +56,9 @@ class nn(object):
                self.Xy.loc[self.val_date_split: self.test_date_split], \
                self.Xy[self.test_date_split:]
 
+    @staticmethod
+    def get_class_weight(y):
+        return compute_class_weight("balanced",[-1,0,1], y)
 
 
     def df_to_dataset(self,dataframe, shuffle=True, cat_no=3):
@@ -65,8 +72,7 @@ class nn(object):
         return ds
 
 
-    def to_ds(self):
-        train, val, test = self.train_val_test_split()
+    def to_ds(self, train, val, test):
         if self.side:
             return self.df_to_dataset(train), \
                self.df_to_dataset(val, shuffle=False), \
@@ -106,6 +112,26 @@ class nn(object):
 
         callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5)
 
+        def w_categorical_crossentropy(y_true, y_pred, weights):
+            nb_cl = len(weights)
+            final_mask = K.zeros_like(y_pred[:, 0])
+            y_pred_max = K.max(y_pred, axis=1)
+            y_pred_max = K.expand_dims(y_pred_max, 1)
+            y_pred_max_mat = K.equal(y_pred, y_pred_max)
+            for c_p, c_t in product(range(nb_cl), range(nb_cl)):
+                final_mask += (
+                            K.cast(weights[c_t, c_p], K.floatx()) * K.cast(y_pred_max_mat[:, c_p], K.floatx()) * K.cast(
+                        y_true[:, c_t], K.floatx()))
+            return K.categorical_crossentropy(y_pred, y_true) * final_mask
+
+        w_array = np.ones((3, 3))
+        w_array[0, -1] = 5.556
+        w_array[-1, 0] = 5.556
+
+        loss = lambda y_true, y_pred: w_categorical_crossentropy(y_true, y_pred, weights=w_array)
+
+
+
         def coeff_determination(y_true, y_pred):
             SS_res = K.sum(K.square(y_true - y_pred))
             SS_tot = K.sum(K.square(y_true - K.mean(y_true)))
@@ -113,7 +139,8 @@ class nn(object):
 
         model = tf.keras.Sequential([
             feature_layer,
-            layers.Conv1D(64, kernel_size=5),
+            layers.Dense(64, activation='relu'),
+            layers.BatchNormalization(),
             layers.Dense(64, activation='relu',
                          activity_regularizer=regularizers.l1(0.0001)),
             #  layers.Dropout(0.5),
@@ -122,12 +149,12 @@ class nn(object):
             #  layers.BatchNormalization(),
             #  layers.Dropout(0.1),
             #  layers.Dense(8, activation='relu'),
-            #layers.BatchNormalization(),
+            layers.BatchNormalization(),
             layers.Dense(3, activation='softmax')
             # layers.LeakyReLU(alpha=0.3)
         ])
 
-        if self.side:   model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+        if self.side:   model.compile(optimizer='adam', loss=loss, metrics=['categorical_accuracy'])
         else: model.compile(optimizer='sgd', loss='mean_squared_error', metrics=[coeff_determination])
 
         return model, callback
@@ -143,17 +170,34 @@ class nn(object):
         # print(self.Xy.shape)
         # print(self.Xy[self.Xy['na_bool']].groupby(['ticker']).agg('count'))
         # exit()
-        train_ds, val_ds, test_ds = self.to_ds()
+        train, val, test = self.train_val_test_split()
+        if self.side:
+            class_weights = self.get_class_weight(train['target'])
+            d_class_weights = dict(enumerate(class_weights))
+
+        else:
+            d_class_weights = None
+
+        print(d_class_weights)
+        train_ds, val_ds, test_ds = self.to_ds(train, val, test)
+
         model, callback = self.build_nn()
         model.fit(train_ds,
                   validation_data=val_ds,
-                  epochs=10, callbacks=[callback])
+                  epochs=5, callbacks=[callback], class_weight=d_class_weights)
 
+        # pd.DataFrame(model.predict(test_ds)).to_pickle("test_nn_pred.pkl")
         # print(model.layers[0].output)
 
         loss, accuracy = model.evaluate(test_ds)
+        # model.predict(test_ds)
+
         # print("R^2", coeff_determination)
         print("Accuracy", accuracy)
+
+        pred_y = model.predict(test_ds).argmax(axis=-1)
+        # print(classification_report(to_categorical(test['target']), model.predict(test_ds))) ## trying
+        print(classification_report(test['target'].values,pred_y)) ## will try
 
 test_nn = nn("pre_data/feat_useod_daily.pkl", ['ticker'], ['fwdret', 'ticker'], '2018-01-10', '2018-01-15', 32, True)
 test_nn.run_nn()

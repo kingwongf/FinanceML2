@@ -6,23 +6,23 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
-from sklearn.metrics import accuracy_score
-from xgboost import XGBClassifier
+from sklearn.metrics import accuracy_score, r2_score
+from xgboost import XGBClassifier, XGBRegressor
 from tools.featGen import get_norm_side
+from sklearn.metrics import classification_report
+
+# from imblearn import
 
 #from tools import visual_tools
 import pickle
 from scipy.stats.mstats import zscore, winsorize
 
 class xgb(object):
-	def __init__(self, Xy_loc, cat, drop_col, test_date_split, batch_size=32, side=True):
+	def __init__(self, Xy_loc, test_date_split, target, side=True):
 		self.Xy = pd.read_pickle(Xy_loc)
-		self.cat = cat  ## sould be ['Date', 'target', 'ticker']
-		self.drop_cat_leakage_col = drop_col
 		self.test_date_split = test_date_split
-		self.numeric = [e for e in self.Xy.columns.tolist() if e not in self.drop_cat_leakage_col]
-		self.batch_size = batch_size
 		self.side = side
+		self.target = target
 
 
 	def set_target(self, col):
@@ -36,24 +36,27 @@ class xgb(object):
 		self.Xy = self.Xy.drop([col], axis=1)
 
 	def train_test_split(self):
-		return self.Xy[self.test_date_split], self.Xy[self.test_date_split:]
+		return self.Xy[:self.test_date_split], self.Xy[self.test_date_split:]
 
 	@staticmethod
 	def Xy_split(df, label):
 		df1 = df.copy()
 		target = df1.pop(label)
-		return df, target
+		return df1, target
+
+	def gen_feature(self):
+		categorical_features = self.Xy.columns[(self.Xy.dtypes.values != np.dtype('float64')) & (self.Xy.columns != self.target)].tolist()
+		numeric_features = self.Xy.columns[(self.Xy.dtypes.values == np.dtype('float64')) & (self.Xy.columns != self.target)].tolist()
+		return categorical_features, numeric_features
 
 	def make_pipeline(self):
-		categorical_features = self.Xy.columns[(self.Xy.dtypes.values != np.dtype('float64'))].tolist()
-		numeric_features = self.Xy.columns[(self.Xy.dtypes.values == np.dtype('float64'))].tolist()
-
 		numeric_transformer = Pipeline(
 			steps=[('imputer', SimpleImputer(strategy='median')), ('scalar', StandardScaler())])
 
 		categorical_transfomer = Pipeline(steps=[('imputer', SimpleImputer(strategy='constant', fill_value='missing')),
 		                                         ('onehot_sparse', OneHotEncoder(handle_unknown='ignore'))])
 
+		categorical_features, numeric_features = self.gen_feature()
 		preprocessor = ColumnTransformer(
 			transformers=[
 				('num', numeric_transformer, numeric_features),
@@ -61,15 +64,46 @@ class xgb(object):
 			]
 		)
 
-		params = {'num_class': 3, 'objective': 'multi:softprob'}
+		clf_params = {'num_class': 3, 'objective': 'multi:softprob'}
 
-		clf = Pipeline(steps=[('preprocessor', preprocessor),
-		                      ('classifier', XGBClassifier(params=params))])
+		if self.side:
+			clf = Pipeline(steps=[('preprocessor', preprocessor), ('classifier', XGBClassifier(params=clf_params))])
+			return clf
+		else:
+			reg = Pipeline(steps=[('preprocessor', preprocessor), ('classifier', XGBRegressor())])
+			return reg
+
+
+
+	def fit_pipeline(self):
 		print("Preparing to train...")
 		# print(train_X.shape)
+		self.set_target("fwdret")
+		clf = self.make_pipeline()
+
+		train, test = self.train_test_split()
+		# print(train, test)
+		train_X, train_y = self.Xy_split(train,self.target)
+		test_X, test_y = self.Xy_split(test,self.target)
+
 		clf.fit(train_X, train_y)
 
+		pred_y = clf.predict(test_X)
+		# np.savetxt(file, pred_y)
 
+
+
+		print("Test Accuracy", accuracy_score(test_y, pred_y))
+
+		if self.side: (classification_report(test_y, pred_y))
+		else: print(r2_score(test_y, pred_y))
+
+
+# xgb_test = xgb("pre_data/feat_useod_daily.pkl", '2018-01-01', "target", False)
+xgb_test = xgb("pre_data/feat_useod_daily.pkl", '2018-01-01', "target")
+xgb_test.fit_pipeline()
+
+'''
 def xgboost_model(file, risk=True, momentum=True, supplychain=True):
 
 
@@ -137,7 +171,7 @@ def xgboost_model(file, risk=True, momentum=True, supplychain=True):
 	# print(train_X.shape)
 	clf.fit(train_X, train_y)
 
-	# pickle.dumps(clf, open('clf.pkl', 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+	# pickle.dumps(clf, open('clf.pkl',	'wb'), protocol = pickle.HIGHEST_PROTOCOL)
 
 	pred_y = clf.predict(test_X)
 	# np.savetxt(file, pred_y)
@@ -155,3 +189,4 @@ def xgboost_model(file, risk=True, momentum=True, supplychain=True):
 	imp_coef = feature_importance.copy()
 	imp_coef = imp_coef[imp_coef != 0][0:20]
 	imp_coef.to_pickle(file)
+'''
