@@ -11,7 +11,7 @@ import statsmodels.api as sm
 import matplotlib.pyplot as plt
 import zipfile
 import time
-from de.feat_gen.technicalsGen import featTAGen
+from de.feat_engineering.technicalsGen import featTAGen
 
 from tools import featGen
 from tools import labelling_Marcos

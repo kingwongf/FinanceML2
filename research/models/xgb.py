@@ -67,10 +67,12 @@ class xgb(object):
 		clf_params = {'num_class': 3, 'objective': 'multi:softprob'}
 
 		if self.side:
-			clf = Pipeline(steps=[('preprocessor', preprocessor), ('classifier', XGBClassifier(params=clf_params))])
+			clf = Pipeline(steps=[('preprocessor', preprocessor),
+								  ('classifier', XGBClassifier(params=clf_params))])
 			return clf
 		else:
-			reg = Pipeline(steps=[('preprocessor', preprocessor), ('classifier', XGBRegressor())])
+			reg = Pipeline(steps=[('preprocessor', preprocessor),
+								  ('classifier', XGBRegressor())])
 			return reg
 
 

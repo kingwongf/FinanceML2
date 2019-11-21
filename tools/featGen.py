@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.stats.mstats import zscore, winsorize
-
+import pandas as pd
 
 #print(pd.__version__)
 #price = pd.read_csv("1min_price_EURTRY_2019-07-20_1min.csv")
@@ -103,9 +103,10 @@ def fwdret(close, n=1):
     return ret(close, n=1).shift(-n)
 
 def side(close, n=1):
-    ret_ = ret(close, n=n)
-    side_ = np.sign(ret_)
-    return side_
+    return np.sign(ret(close, n=n))
+
+def ema_side(ret, ema_ret):
+    return np.sign(ret - ema_ret)
 
 
 def get_norm_side(ret, stats=(0,0,1.645)):
@@ -115,6 +116,30 @@ def get_norm_side(ret, stats=(0,0,1.645)):
     side[(ret - mean) / np.sqrt(vol) < -z] = -1
     side[((ret - mean) / np.sqrt(vol) >= -z) & ((ret - mean) / np.sqrt(vol) <= z)] = 0
     return side
+
+
+
+def util_winsor5(x):
+    return (winsorize(x,limits=[0.05, 0.05]))
+
+def nanzscore(a):
+    if len(a[~np.isnan(a)]) > 10:
+        z = a                    # initialise array for zscores
+        z[~np.isnan(a)] = util_winsor5(z[~np.isnan(z)])
+        z[~np.isnan(a)] = zscore(z[~np.isnan(z)])
+    else:
+        z = a
+        z[~np.isnan(a)] = np.repeat(0, len(a[~np.isnan(a)]), axis=0)
+    return(z)
+
+def nanzscore_gp(a,gp):
+    pdf  = pd.DataFrame({'a':[a], 'gp':[gp]})
+    pdfz = pdf.groupby('gp').a.transform(nanzscore)
+    return((pdfz))
+
+def mrm_c(std):
+    return(  (0.95-np.tanh(std/1.3)**2) * (std) )
+
 #K, D = stochRSI(price['4. close'])
 
 #print(MACD(price['4. close']))

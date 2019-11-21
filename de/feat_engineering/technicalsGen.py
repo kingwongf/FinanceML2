@@ -60,6 +60,8 @@ class featTAGen(object):
             df1 = df1.join(
                     df1[['price']].swifter.apply(item[0], axis=0, args=(item[1],)).fillna(method='ffill').rename(
                         columns={"price": item[2]}))
+            ## TODO try below to reduce memory
+            # df1["price": item[2]] = df1[['price']].swifter.apply(item[0], axis=0, args=(item[1],)).fillna(method='ffill')
         return df1.unstack('feat').unstack('feat')
 
 '''        
