@@ -1,0 +1,8 @@
+## TODO list
+
+0. smooth out returns and fit regressions with mrm_c
+1. check if features are really normalized
+2. try Marcos labelling
+3. find a way to control for imbalance classes
+4. change pickle to feather
+5. moves static config to yaml file
