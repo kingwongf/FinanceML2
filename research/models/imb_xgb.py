@@ -123,8 +123,8 @@ class xgb(object):
 		return feature_importance.sort_values(ascending=False)[feature_importance != 0][0:n]
 
 
-# xgb_reg_test = xgb("pre_data/feat_useod_daily.pkl", '2018-01-01', "target", False)
-xgb_clf_test = xgb("pre_data/feat_useod_daily.pkl", '2018-01-01', "target", True)
+# xgb_reg_test = xgb("pre_data/feat_useod_daily_1mfwd.pkl", '2018-01-01', "target", False)
+xgb_clf_test = xgb("pre_data/feat_useod_daily_1mfwd.pkl", '2018-01-01', "target", True)
 xgb_clf_test.fit_pipeline()
 
 '''

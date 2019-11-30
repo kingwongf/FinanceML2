@@ -4,17 +4,18 @@ import tensorflow as tf
 from keras import backend as K
 from sklearn.model_selection import train_test_split
 from tensorflow import feature_column
-np.set_printoptions(threshold=np.inf)
+# np.set_printoptions(threshold=np.inf)
 from tensorflow.keras import layers
 from tensorflow.keras import regularizers
 from tensorflow.keras.utils import to_categorical
-from tools.featGen import get_norm_side
+from tools.featGen import get_norm_side, tanh_func, moskowitz_func
 from sklearn.metrics import classification_report
 from sklearn.utils.class_weight import compute_class_weight
 from imblearn.keras import balanced_batch_generator
 from imblearn.under_sampling import NearMiss
 from itertools import product
-
+from collections import Counter
+K.set_floatx('float64')
 
 pd.set_option('display.max_columns', None)  # or 1000
 pd.set_option('display.max_rows', None)  # or 1000
@@ -35,11 +36,15 @@ class nn(object):
 
     def set_target(self, col):
         if self.side:
-            self.Xy['target'] = get_norm_side(self.Xy[col], (self.Xy["emaret"], self.Xy["retvol1m"], 1.645))
+            # self.Xy['target'] = get_norm_side(self.Xy[col], (self.Xy["emaret"], self.Xy["retvol1m"], 1.645))
+            self.Xy['target'] = np.sign(self.Xy[col])
             self.Xy['target'] = self.Xy['target'].astype('category')
+
             # self.Xy['target'] = to_categorical(get_norm_side(self.Xy[col], (self.Xy["emaret"], self.Xy["retvol1m"], 1.645)).astype('category'),3)
             # self.Xy = self.Xy[self.Xy["target"].notnull()]
-        else: self.Xy['target'] = self.Xy[col]
+        else:
+            # self.Xy['target'] = self.Xy[col]
+            self.Xy['target'] = tanh_func(self.Xy[col])
         self.Xy = self.Xy.drop([col], axis=1)
 
 
@@ -48,7 +53,9 @@ class nn(object):
         ## TODO change to train min/ max only to prevent leakage
         :return: scaled features and target
         '''
-        self.Xy[self.numeric] = (self.Xy[self.numeric] - self.Xy[self.numeric].min(axis=0)) / (self.Xy[self.numeric].max(axis=0) - self.Xy[self.numeric].min(axis=0))
+        self.Xy[self.numeric] = \
+            (self.Xy[self.numeric] - self.Xy[self.numeric].min(axis=0))\
+            / (self.Xy[self.numeric].max(axis=0) - self.Xy[self.numeric].min(axis=0))
 
 
     def train_val_test_split(self):
@@ -63,8 +70,12 @@ class nn(object):
 
     def df_to_dataset(self,dataframe, shuffle=True, cat_no=3):
         dataframe = dataframe.copy()
+        # print(dataframe['target'].tail(5))
         if cat_no==None: labels = dataframe.pop('target')
-        else: labels = to_categorical(dataframe.pop('target'),cat_no)
+        else:
+            labels = to_categorical(dataframe.pop('target'),cat_no)
+            # print(labels)
+        # exit()
         ds = tf.data.Dataset.from_tensor_slices((dict(dataframe), labels))
         if shuffle:
             ds = ds.shuffle(buffer_size=len(dataframe))
@@ -106,7 +117,7 @@ class nn(object):
         return feature_columns
 
 
-    def build_nn(self):
+    def build_nn(self, d_class_weights):
 
         feature_layer = tf.keras.layers.DenseFeatures(self.gen_feature_columns())
 
@@ -125,6 +136,7 @@ class nn(object):
             return K.categorical_crossentropy(y_pred, y_true) * final_mask
 
         w_array = np.ones((3, 3))
+
         w_array[0, -1] = 5.556
         w_array[-1, 0] = 5.556
 
@@ -137,24 +149,27 @@ class nn(object):
             SS_tot = K.sum(K.square(y_true - K.mean(y_true)))
             return (1 - SS_res / (SS_tot + K.epsilon()))
 
-        model = tf.keras.Sequential([
+        seq_layers = [
             feature_layer,
             layers.Dense(64, activation='relu'),
             layers.BatchNormalization(),
-            layers.Dense(64, activation='relu',
+            layers.Dense(128, activation='relu',
                          activity_regularizer=regularizers.l1(0.0001)),
-            #  layers.Dropout(0.5),
+            # layers.Dropout(0.5),
             # layers.BatchNormalization(),
             layers.Dense(64, activation='relu'),
             #  layers.BatchNormalization(),
             #  layers.Dropout(0.1),
             #  layers.Dense(8, activation='relu'),
-            layers.BatchNormalization(),
-            layers.Dense(3, activation='softmax')
+            layers.BatchNormalization()
             # layers.LeakyReLU(alpha=0.3)
-        ])
+        ]
+        if self.side:  seq_layers.append(layers.Dense(3, activation='softmax'))
+        else: seq_layers.append(layers.Dense(1, activation='tanh'))
 
-        if self.side:   model.compile(optimizer='adam', loss=loss, metrics=['categorical_accuracy'])
+        model = tf.keras.Sequential(seq_layers)
+
+        if self.side:   model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['categorical_accuracy'])
         else: model.compile(optimizer='sgd', loss='mean_squared_error', metrics=[coeff_determination])
 
         return model, callback
@@ -181,25 +196,31 @@ class nn(object):
         print(d_class_weights)
         train_ds, val_ds, test_ds = self.to_ds(train, val, test)
 
-        model, callback = self.build_nn()
+        model, callback = self.build_nn(d_class_weights)
+
         model.fit(train_ds,
                   validation_data=val_ds,
-                  epochs=5, callbacks=[callback], class_weight=d_class_weights)
+                  epochs=1, callbacks=[callback]) # , class_weight=d_class_weights
 
         # pd.DataFrame(model.predict(test_ds)).to_pickle("test_nn_pred.pkl")
         # print(model.layers[0].output)
 
-        loss, accuracy = model.evaluate(test_ds)
+        loss, metric = model.evaluate(test_ds)
         # model.predict(test_ds)
 
         # print("R^2", coeff_determination)
-        print("Accuracy", accuracy)
+        if self.side: print("Categorical Accuracy", metric)
+        else: print("R^2 ", metric)
 
-        pred_y = model.predict(test_ds).argmax(axis=-1)
+        pred_y = np.argmax(model.predict(test_ds), axis=1) # minus 1 to map, cat{0,1,2} back to {-1, 0, 1}
+        # print(test['target'].values)
+        print(pred_y)
         # print(classification_report(to_categorical(test['target']), model.predict(test_ds))) ## trying
-        print(classification_report(test['target'].values,pred_y)) ## will try
+        if self.side: print(classification_report(test['target'].values,pred_y)) ## will try
 
-test_nn = nn("pre_data/feat_useod_daily.pkl", ['ticker'], ['fwdret', 'ticker'], '2018-01-10', '2018-01-15', 32, True)
+test_nn = nn("pre_data/feat_useod_daily_1mfwd.pkl", ['ticker'], ['fwdret', 'ticker'], '2018-01-10', '2018-01-15', 32, True) ## clf
+# test_nn = nn("pre_data/feat_useod_daily_1mfwd.pkl", ['ticker'], ['fwdret', 'ticker'], '2018-01-10', '2018-01-15', 32, False) ## reg
+
 test_nn.run_nn()
 
 '''

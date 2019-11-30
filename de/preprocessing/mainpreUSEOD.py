@@ -14,10 +14,10 @@ pd.set_option("display.max_columns", 500)
 
 
 
-
+fwd_freq = '3d'
 pre = preUSEOD('data/equities/US_EOD_20191019.pkl', 'data/equities/preprocessed/us_eod_adj_close.pkl', 'data/equities/revolut_tickers.csv')
 df_pre_useod = pre.pivot('Adj_Close').fillna(method='ffill')
-ta = featTAGen(df_pre_useod, '1m')
+ta = featTAGen(df_pre_useod, fwd_freq)
 df = ta.ta_gen()
 df = pre.flatten(df).dropna(axis=0)['2009-01-01':]   ## debugging ['2018-01-01':'2018-01-20']
-df.to_pickle('pre_data/feat_useod_daily.pkl')
+df.to_pickle('pre_data/feat_useod_daily_%sfwd.pkl' % fwd_freq)

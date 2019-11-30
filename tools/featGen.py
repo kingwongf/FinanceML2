@@ -140,6 +140,14 @@ def nanzscore_gp(a,gp):
 def mrm_c(std):
     return(  (0.95-np.tanh(std/1.3)**2) * (std) )
 
+
+def moskowitz_func(x):
+  # Moskowitz et al. 2012
+  return x * np.exp( - (x**2)/4) /0.89
+
+def tanh_func(x):
+  return np.tanh(x)
+
 #K, D = stochRSI(price['4. close'])
 
 #print(MACD(price['4. close']))

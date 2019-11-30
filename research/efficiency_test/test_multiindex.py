@@ -28,14 +28,22 @@ df = df.join(df.apply(lambda x: x +1 ).rename(columns={"price": "add_1"}))\
       .join(df.swifter.apply(featGen.momentum, axis=0, args=(3, )).rename(columns={"price": "mom3"}))\
       .join(df.swifter.apply(featGen.momentum, axis=0, args=(3, )).diff(periods=1).rename(columns={"price": "chmom3"}))
 '''
-feat_li = [(featGen.momentum, 1, "mom1"), (featGen.momentum, 3, "mom3"), (featGen.chmom, 3, "chmom3"), (featGen.ret, 5, "return1m"), (featGen.MACD, (1,2), "MACD112")]
+feat_li = [(featGen.momentum, 1, "mom1"),
+           (featGen.momentum, 3, "mom3"),
+           (featGen.chmom, 3, "chmom3"),
+           (featGen.ret, 5, "return1m"),
+           (featGen.MACD, (1,2), "MACD112")]
+
 for item in feat_li:
       if len(item) ==3:
             df = df.join(df[['price']].swifter.apply(item[0], axis=0, args=(item[1], )).fillna(method='ffill').rename(columns={"price": item[2]}))
 
 
 # print(df)
-print(df.unstack('feat').unstack('feat'))
+print(df.unstack('Date').unstack('feat'))
+# print(df.unstack('feat').unstack('feat'))
+
+exit()
 
 name_dfs = ['close', 'mom1d', 'mom1w', 'mom1m', 'chmom1m', 'mom6m', 'chmom6m', 'mom12m',
             'chmom12m', 'retvol1m', 'retvol12m', 'maxret1m',

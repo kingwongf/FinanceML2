@@ -11,7 +11,7 @@ ax0 = axs.twinx()
 ax1 = axs.twinx()
 ax0.plot(x,y, linewidth=0.3)
 
-df1 = pd.read_pickle("pre_data/feat_useod_daily.pkl")
+df1 = pd.read_pickle("pre_data/feat_useod_daily_1mfwd.pkl")
 actual_x = df1['fwdret'].values
 actual_mrmc = mrm_c(actual_x)
 ax0.scatter(actual_x, actual_mrmc,s=0.5)

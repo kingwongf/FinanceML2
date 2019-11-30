@@ -8,7 +8,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import accuracy_score, r2_score
 from xgboost import XGBClassifier, XGBRegressor
-from tools.featGen import get_norm_side
+from tools.featGen import get_norm_side, moskowitz_func, tanh_func, mrm_c
 from sklearn.metrics import classification_report
 
 # from imblearn import
@@ -27,12 +27,17 @@ class xgb(object):
 
 	def set_target(self, col):
 		if self.side:
-			self.Xy['target'] = get_norm_side(self.Xy[col], (self.Xy["emaret"], self.Xy["retvol1m"], 1.645))
+			# self.Xy['target'] = get_norm_side(self.Xy[col], (self.Xy["emaret1m"], self.Xy["retvol1m"], 1.645))
+			# self.Xy['target'] = np.sign(self.Xy[col])
 			self.Xy['target'] = self.Xy['target'].astype('category')
 		# self.Xy['target'] = to_categorical(get_norm_side(self.Xy[col], (self.Xy["emaret"], self.Xy["retvol1m"], 1.645)).astype('category'),3)
 		# self.Xy = self.Xy[self.Xy["target"].notnull()]
 		else:
-			self.Xy['target'] = self.Xy[col]
+			# self.Xy['target'] = self.Xy[col]
+			# self.Xy['target'] = moskowitz_func(self.Xy[col])
+			# self.Xy['target'] = tanh_func(self.Xy[col])
+			self.Xy['target'] = mrm_c(self.Xy[col])
+
 		self.Xy = self.Xy.drop([col], axis=1)
 
 	def train_test_split(self):
@@ -65,14 +70,15 @@ class xgb(object):
 		)
 
 		clf_params = {'num_class': 3, 'objective': 'multi:softprob'}
+		reg_params = {'max_depth': 10, 'objective': 'reg:squarederror'}
 
 		if self.side:
 			clf = Pipeline(steps=[('preprocessor', preprocessor),
-								  ('classifier', XGBClassifier(params=clf_params))])
+								  ('classifier', XGBClassifier(**clf_params))])
 			return clf
 		else:
 			reg = Pipeline(steps=[('preprocessor', preprocessor),
-								  ('classifier', XGBRegressor())])
+								  ('classifier', XGBRegressor(**reg_params))])
 			return reg
 
 
@@ -95,100 +101,48 @@ class xgb(object):
 
 
 
-		print("Test Accuracy", accuracy_score(test_y, pred_y))
+		# print("Test Accuracy", accuracy_score(test_y, pred_y))
 
-		if self.side: (classification_report(test_y, pred_y))
+		if self.side: print(classification_report(test_y, pred_y))
 		else: print(r2_score(test_y, pred_y))
 
 
-# xgb_test = xgb("pre_data/feat_useod_daily.pkl", '2018-01-01', "target", False)
-xgb_test = xgb("pre_data/feat_useod_daily.pkl", '2018-01-01', "target")
+xgb_test = xgb("pre_data/feat_useod_daily_1dfwd.pkl", '2018-01-01', "target", False) ## reg
+# xgb_test = xgb("pre_data/feat_useod_daily_3dfwd.pkl", '2018-01-01', "target") ## clf
 xgb_test.fit_pipeline()
 
 '''
-def xgboost_model(file, risk=True, momentum=True, supplychain=True):
+with np.sign 1mfwd
+              precision    recall  f1-score   support
 
+        -1.0       0.45      0.06      0.10     90514
+         0.0       0.00      0.00      0.00      1990
+         1.0       0.52      0.94      0.67     98597
 
-	out = out.drop(["datepll", "datepll.1"], axis=1)
-	if not risk:
-		out = out.drop(['crating', 'orating',
-		                'history', 'cond_ind', 'finance', 'moved', 'sales', 'hicdtavg',
-		                'pexp_s_n', 'pexp_30', 'pexp_60', 'pexp_90', 'pexp_180', 'bnkrpt',
-		                'dbt_ind', 'uccfilng', 'cscore', 'cpct', 'fpct', 'paynorm', 'pubpvt',
-		                'pex_sn1', 'bd_ind'], axis=1)
+    accuracy                           0.51    191101
+   macro avg       0.32      0.33      0.26    191101
+weighted avg       0.48      0.51      0.39    191101
 
-	if not momentum:
-		out = out.drop(["mom"], axis=1)
+with np.sign 1dfwd
+              precision    recall  f1-score   support
 
-	if not supplychain:
-		out = out.drop(['revenue_dependency', 'adj_close_dependency', 'mom_dependency',
-		                'vol_dependency', 'MACD_dependency'], axis=1)
+        -1.0       0.48      0.12      0.19     89061
+         0.0       0.00      0.00      0.00      1985
+         1.0       0.53      0.89      0.66    100055
 
-	# out = out.drop(['index'], axis=1)
-	out['Date'] = pd.to_datetime(out['Date'])
-	# out.info()
-	# exit(0)
-	# out['cat_feat_1'] = out['fwd_return'].astype(str)
+    accuracy                           0.52    191101
+   macro avg       0.33      0.34      0.28    191101
+weighted avg       0.50      0.52      0.43    191101
 
-	# out = out.replace([np.inf, -np.inf], np.nan)
-	# out = out.dropna()
-	col_li = out.columns.tolist()
+with np.sign 3dfwd
+              precision    recall  f1-score   support
 
-	train_X, test_X = out[out['Date'] <= '2018-12-31'].drop(
-		["ReturnClassifier", "excess_return", "fwd_return", "Date", "ticker"], axis=1), out[
-		                  out['Date'] > '2018-12-31'].drop(
-		["excess_return", "ReturnClassifier", "fwd_return", "Date", "ticker"], axis=1)
-	train_y, test_y = out[out['Date'] <= '2018-12-31']['ReturnClassifier'], out[out['Date'] > '2018-12-31'][
-		'ReturnClassifier']
+        -1.0       0.48      0.07      0.12     89302
+         0.0       0.00      0.00      0.00      1986
+         1.0       0.52      0.93      0.67     99813
 
-	# out[out['Date']>'2018-12-31']["Date"].to_pickle("date.pkl")
-	# np.savetxt("ticker.txt", out[out['Date']>'2018-12-31']["ticker"], fmt='%s;')
+    accuracy                           0.52    191101
+   macro avg       0.33      0.33      0.26    191101
+weighted avg       0.50      0.52      0.41    191101
 
-	categorical_features = out.columns[(out.dtypes.values != np.dtype('float64'))].tolist()
-	numeric_features = out.columns[(out.dtypes.values == np.dtype('float64'))].tolist()
-
-	numeric_features.remove('ReturnClassifier')
-	numeric_features.remove('fwd_return')
-	numeric_features.remove('excess_return')
-	categorical_features.remove('Date')
-	categorical_features.remove('ticker')
-
-	numeric_transformer = Pipeline(steps=[('imputer', SimpleImputer(strategy='median')), ('scalar', StandardScaler())])
-
-	categorical_transfomer = Pipeline(steps=[('imputer', SimpleImputer(strategy='constant', fill_value='missing')),
-	                                         ('onehot_sparse', OneHotEncoder(handle_unknown='ignore'))])
-
-	preprocessor = ColumnTransformer(
-		transformers=[
-			('num', numeric_transformer, numeric_features),
-			('cat', categorical_transfomer, categorical_features)
-		]
-	)
-
-	params = {'num_class': 3, 'objective': 'multi:softprob'}
-
-	clf = Pipeline(steps=[('preprocessor', preprocessor),
-	                      ('classifier', XGBClassifier(params=params))])
-	print("Preparing to train...")
-	# print(train_X.shape)
-	clf.fit(train_X, train_y)
-
-	# pickle.dumps(clf, open('clf.pkl',	'wb'), protocol = pickle.HIGHEST_PROTOCOL)
-
-	pred_y = clf.predict(test_X)
-	# np.savetxt(file, pred_y)
-
-	print(accuracy_score(test_y, pred_y))
-
-	onehot_columns = clf.named_steps['preprocessor'].named_transformers_['cat'].named_steps[
-		'onehot_sparse'].get_feature_names(input_features=categorical_features)
-
-	feature_importance = pd.Series(data=clf.named_steps['classifier'].feature_importances_,
-	                               index=np.append(numeric_features, onehot_columns))
-
-	feature_importance = feature_importance.sort_values(ascending=False)
-
-	imp_coef = feature_importance.copy()
-	imp_coef = imp_coef[imp_coef != 0][0:20]
-	imp_coef.to_pickle(file)
 '''

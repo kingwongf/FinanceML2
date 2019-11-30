@@ -3,7 +3,7 @@ equities:
     us: data/equities/US_EOD_20191019.pkl
     china: data/equities/China_EOD_20191019.pkl
   feat:
-    us: pre_data/feat_useod_daily.pkl
+    us: pre_data/feat_useod_daily_1mfwd.pkl
 
 fx:
   raw:
