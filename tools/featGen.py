@@ -148,6 +148,21 @@ def moskowitz_func(x):
 def tanh_func(x):
   return np.tanh(x)
 
+
+def cat_mrm_c(std, vol):
+    value = np.tanh((10 / vol) * 50 * std)
+    value[value < -0.8] = -1
+    value[value > 0.8] = 1
+    value[(value >= -0.8) & (value <= 0.8)] = 0
+    return value
+
+def step_func(x, threshold):
+    x[x < -threshold] = -1
+    x[x > threshold] = 1
+    x[(x > -threshold) &((x < threshold))] = 0
+    return x
+def log_ts(x,n=None):
+    return np.log(x)
 #K, D = stochRSI(price['4. close'])
 
 #print(MACD(price['4. close']))

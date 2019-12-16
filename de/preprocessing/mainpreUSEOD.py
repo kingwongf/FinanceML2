@@ -14,8 +14,10 @@ pd.set_option("display.max_columns", 500)
 
 
 
-fwd_freq = '3d'
-pre = preUSEOD('data/equities/US_EOD_20191019.pkl', 'data/equities/preprocessed/us_eod_adj_close.pkl', 'data/equities/revolut_tickers.csv')
+fwd_freq = '1d'
+pre = preUSEOD('data/equities/US_EOD_20191019.pkl',
+               'data/equities/preprocessed/us_eod_adj_close.pkl',
+               'data/equities/revolut_tickers.csv')
 df_pre_useod = pre.pivot('Adj_Close').fillna(method='ffill')
 ta = featTAGen(df_pre_useod, fwd_freq)
 df = ta.ta_gen()

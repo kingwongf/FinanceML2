@@ -1,7 +1,7 @@
 from de.preprocessing.preUSEOD import preUSEOD
 from tools.labelling_Marcos import getEvents, getDailyVol
 '''
-I forgot what this do
+I forgot what this does
 
 '''
 

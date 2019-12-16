@@ -31,7 +31,8 @@ class xgb(object):
 
 	def set_target(self, col):
 		if self.side:
-			self.Xy['target'] = get_norm_side(self.Xy[col], (self.Xy["emaret"], self.Xy["retvol1m"], 1.645))
+			# self.Xy['target'] = get_norm_side(self.Xy[col], (self.Xy["emaret"], self.Xy["retvol1m"], 1.645))
+			self.Xy['target'] = np.sign(self.Xy[col])
 			self.Xy['target'] = self.Xy['target'].astype('category')
 		# self.Xy['target'] = to_categorical(get_norm_side(self.Xy[col], (self.Xy["emaret"], self.Xy["retvol1m"], 1.645)).astype('category'),3)
 		# self.Xy = self.Xy[self.Xy["target"].notnull()]
@@ -73,8 +74,8 @@ class xgb(object):
 		clf_params = {'num_class': 3, 'objective': 'multi:softprob'}
 
 		## TODO customise under_sampler
-		under_sampler = RandomUnderSampler(random_state=42)
-		# under_sampler = NearMiss(random_state=42, version=2)
+		# under_sampler = RandomUnderSampler(random_state=42)
+		under_sampler = NearMiss(random_state=42, version=2)
 		# under_sampler = TomekLinks()
 
 		if self.side:
@@ -124,7 +125,7 @@ class xgb(object):
 
 
 # xgb_reg_test = xgb("pre_data/feat_useod_daily_1mfwd.pkl", '2018-01-01', "target", False)
-xgb_clf_test = xgb("pre_data/feat_useod_daily_1mfwd.pkl", '2018-01-01', "target", True)
+xgb_clf_test = xgb("pre_data/feat_useod_daily_1dfwd.pkl", '2018-01-01', "target", True)
 xgb_clf_test.fit_pipeline()
 
 '''

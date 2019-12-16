@@ -11,8 +11,7 @@ pd.set_option("display.max_columns", 500)
 
 class featTAGen(object):
     def __init__(self, price_loc, fwdret_freq):
-        if type(price_loc)==str: self.df = pd.read_pickle(price_loc)
-        else: self.df = price_loc
+        self.df = pd.read_pickle(price_loc) if isinstance(price_loc,str) else price_loc
 
         # .rename_axis(index='Date', columns="ticker")
 
@@ -33,24 +32,25 @@ class featTAGen(object):
                           '12m': 250
                           }
         self.feat_li = [(featGen.momentum, self.freq_dict['1d'], "mom1d"),
-           (featGen.momentum, self.freq_dict['1w'], "mom1w"),
-           (featGen.momentum, self.freq_dict['1m'], "mom1m"),
-           (featGen.momentum, self.freq_dict['6m'], "mom6m"),
-           (featGen.momentum, self.freq_dict['12m'], "mom12m"),
-           (featGen.retvol, self.freq_dict['1m'], "retvol1m"),
-           (featGen.retvol, self.freq_dict['12m'], "retvol12m"),
-           (featGen.maxret, self.freq_dict['1m'], "maxret1m"),
-           (featGen.maxret, self.freq_dict['12m'], "maxret12m"),
-           (featGen.ema, self.freq_dict['1m'], "ema1m"),
-           (featGen.RSI, 14, "RSI"),
-           (featGen.MACD, (20, 250), "MACD"),
-           (featGen.chmom , self.freq_dict['1m'], "chmom1m"),
-           (featGen.chmom, self.freq_dict['6m'], "chmom6m"),
-           (featGen.chmom, self.freq_dict['12m'], "chmom12m"),
-           (featGen.ret, self.freq_dict['1m'], "ret1m"),
-           (featGen.ret, self.freq_dict['1d'], "ret1d"),
-           (featGen.emaret, self.freq_dict['1m'], "emaret1m"),
-           (featGen.fwdret,self.freq_dict[self.fwdret_freq], "fwdret")]
+                        (featGen.momentum, self.freq_dict['1w'], "mom1w"),
+                        (featGen.momentum, self.freq_dict['1m'], "mom1m"),
+                        (featGen.momentum, self.freq_dict['6m'], "mom6m"),
+                        (featGen.momentum, self.freq_dict['12m'], "mom12m"),
+                        (featGen.retvol, self.freq_dict['1m'], "retvol1m"),
+                        (featGen.retvol, self.freq_dict['12m'], "retvol12m"),
+                        (featGen.maxret, self.freq_dict['1m'], "maxret1m"),
+                        (featGen.maxret, self.freq_dict['12m'], "maxret12m"),
+                        (featGen.ema, self.freq_dict['1m'], "ema1m"),
+                        (featGen.RSI, 14, "RSI"),
+                        (featGen.MACD, (20, 250), "MACD"),
+                        (featGen.chmom , self.freq_dict['1m'], "chmom1m"),
+                        (featGen.chmom, self.freq_dict['6m'], "chmom6m"),
+                        (featGen.chmom, self.freq_dict['12m'], "chmom12m"),
+                        (featGen.ret, self.freq_dict['1m'], "ret1m"),
+                        (featGen.ret, self.freq_dict['1d'], "ret1d"),
+                        (featGen.emaret, self.freq_dict['1m'], "emaret1m"),
+                        (featGen.log_ts, self.freq_dict['1m'], "logPrice"),
+                        (featGen.fwdret,self.freq_dict[self.fwdret_freq], "fwdret")]
 
     def ta_gen(self):
         df1 = self.df.copy()
